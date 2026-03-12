@@ -1,26 +1,179 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { useState, useEffect } from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
 
-function App() {
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface Doc {
+  id: number;
+  title: string;
+  score: number;
+  passage: string;
+  fullText: string;
+}
+
+export default function ChatUI() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState<string>("");
+  const [hasStartedChat, setHasStartedChat] = useState<boolean>(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [activeDoc, setActiveDoc] = useState<Doc | null>(null);
+  const [darkMode, setDarkMode] = useState<boolean>(true);
+
+  const uploadWords = ["Documents", "Manual", "Blueprint", "Guide"];
+  const [uploadIndex, setUploadIndex] = useState(0);
+  const [explainLevel, setExplainLevel] = useState("Beginner");
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setUploadIndex((prev) => (prev + 1) % uploadWords.length);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const theme = darkMode
+    ? {
+        bg: "bg-neutral-950",
+        text: "text-neutral-100",
+        border: "border-neutral-800",
+        panel: "bg-neutral-900",
+        bubbleUser: "bg-white text-black",
+        bubbleAssistant: "bg-neutral-800 text-neutral-100",
+        input: "bg-neutral-900 border-neutral-700 text-neutral-100",
+        hover: "hover:bg-neutral-800"
+      }
+    : {
+        bg: "bg-white",
+        text: "text-black",
+        border: "border-gray-200",
+        panel: "bg-gray-50",
+        bubbleUser: "bg-black text-white",
+        bubbleAssistant: "bg-gray-200",
+        input: "bg-white border-gray-300",
+        hover: "hover:bg-gray-50"
+      };
+
+  const [docs] = useState<Doc[]>([
+    { id: 1, title: "example_doc.pdf", score: 0.91, passage: "Reset the ECU by holding the ignition button for five seconds while the vehicle is powered off. The ECU will reinitialize and clear temporary fault states. After reset, cycle ignition once more before driving.", fullText: "Reset the ECU by holding the ignition button for five seconds while the vehicle is powered off. The ECU will reinitialize and clear temporary fault states. After reset, cycle ignition once more before driving. This procedure is useful when debugging intermittent electronic faults or sensor initialization errors." },
+    { id: 2, title: "manual.txt", score: 0.86, passage: "The device enters pairing mode when the power button is held for three seconds. A blinking blue LED indicates that the system is broadcasting its pairing signal.", fullText: "The device enters pairing mode when the power button is held for three seconds. A blinking blue LED indicates that the system is broadcasting its pairing signal. If no device connects within 60 seconds the device exits pairing mode automatically." }
+  ]);
+
+  const sendMessage = () => {
+    if (!input.trim()) return;
+    if (!hasStartedChat) setHasStartedChat(true);
+
+    const newMessages: Message[] = [...messages, { role: "user", content: input }, { role: "assistant", content: "(response placeholder)" }];
+    setMessages(newMessages);
+    setInput("");
+  };
+
+  const handleUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    setUploadedFiles(Array.from(e.target.files));
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") sendMessage();
+  };
+
+  if (!hasStartedChat) {
+    return (
+      <div className={`h-screen flex flex-col items-center justify-center gap-10 ${theme.bg} ${theme.text}`}>
+        <div className="absolute top-4 right-4">
+          <button onClick={() => setDarkMode(!darkMode)} className={`px-3 py-1 text-sm rounded border-2 ${theme.border} shadow-md font-medium backdrop-blur bg-gradient-to-br from-blue-500/20 to-purple-500/20 hover:scale-105 transition-transform`}>{darkMode ? "Light" : "Dark"}</button>
+        </div>
+
+        <div className="text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-gray-400 via-gray-200 to-gray-600 drop-shadow-lg relative">
+          <span className="absolute inset-0 bg-[url('textures/metal-grunge.png')] bg-repeat bg-clip-text mix-blend-overlay"></span>
+          RepairPilot
+        </div>
+
+        <label className="px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white cursor-pointer font-semibold shadow-lg hover:scale-105 transition-transform duration-300">
+          <span className="flex items-center gap-2">
+            <span>Upload</span>
+            <span className="relative h-6 overflow-hidden">
+              <span className="absolute left-0 animate-scroll transition-transform duration-500" style={{ transform: `translateY(-${uploadIndex * 1.5}rem)` }}>
+                {uploadWords.map((w, i) => (
+                  <div key={i} className="h-6 leading-6">{w}</div>
+                ))}
+              </span>
+            </span>
+          </span>
+          <input type="file" multiple className="hidden" accept=".pdf,.txt,.md,.doc,.docx" onChange={handleUpload} />
+        </label>
+
+        {uploadedFiles.length > 0 && <div className="text-sm opacity-70">{uploadedFiles.length} file(s) uploaded</div>}
+
+        <div className="w-full max-w-2xl flex gap-3">
+          <input className={`flex-1 border rounded-xl px-4 py-3 ${theme.input}`} value={input} placeholder="Ask a question about your products..." onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} />
+          <button onClick={sendMessage} className="px-6 py-3 rounded-xl bg-blue-600 text-white">Ask</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className={`h-screen w-full flex flex-col ${theme.bg} ${theme.text}`}>
+      <div className={`border-b p-4 flex items-center justify-between ${theme.border}`}>
+        <div className="flex flex-col">
+          <div className="text-xl font-semibold">RAG Chat</div>
+          <div className="text-xs opacity-60">Product Name • Query Spec Placeholder</div>
+        </div>
+
+        <div className="flex items-center" style={{ gap: '20px' }}>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="opacity-70">Explain it to me like I'm a...</span>
+            <select value={explainLevel} onChange={(e) => setExplainLevel(e.target.value)} className={`px-2 py-1 rounded border ${theme.border} ${theme.panel}`}>
+              <option>Beginner</option>
+              <option>Adept</option>
+              <option>Expert</option>
+            </select>
+          </div>
+
+          <button onClick={() => setDarkMode(!darkMode)} className={`px-3 py-1 text-sm rounded border-2 ${theme.border} shadow-md font-medium backdrop-blur bg-gradient-to-br from-blue-500/20 to-purple-500/20 hover:scale-105 transition-transform`}>{darkMode ? "Light" : "Dark"}</button>
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        <div className={`w-96 border-r overflow-y-auto p-4 space-y-4 ${theme.border} ${theme.panel}`}>
+          <div className="font-semibold">Retrieved Documents</div>
+          {docs.map((doc) => (
+            <div key={doc.id} className={`border rounded-xl p-4 cursor-pointer ${theme.border} ${theme.hover}`} onClick={() => setActiveDoc(doc)}>
+              <div className="font-medium">{doc.title}</div>
+              <div className="text-xs opacity-60 mb-2">score: {doc.score}</div>
+              <div className="text-sm whitespace-pre-wrap">{doc.passage}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col flex-1">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.map((m, i) => (
+              <div key={i} className={`max-w-xl p-3 rounded-2xl ${m.role === "user" ? `${theme.bubbleUser} ml-auto` : theme.bubbleAssistant}`}>{m.content}</div>
+            ))}
+          </div>
+
+          <div className={`border-t p-4 flex gap-3 ${theme.border}`}>
+            <input className={`flex-1 border rounded-xl px-4 py-2 ${theme.input}`} value={input} placeholder="Ask something..." onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} />
+            <button onClick={sendMessage} className="px-4 py-2 rounded-xl bg-blue-600 text-white">Send</button>
+          </div>
+        </div>
+      </div>
+
+      {activeDoc && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center">
+          <div className={`w-3/4 h-3/4 rounded-2xl flex flex-col ${theme.panel}`}>
+            <div className={`border-b p-4 flex justify-between items-center ${theme.border}`}>
+              <div className="font-semibold">{activeDoc.title}</div>
+              <button onClick={() => setActiveDoc(null)} className={`text-sm px-3 py-1 border rounded ${theme.border}`}>Close</button>
+            </div>
+            <div className="p-6 overflow-y-auto text-sm whitespace-pre-wrap">{activeDoc.fullText}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-export default App;
