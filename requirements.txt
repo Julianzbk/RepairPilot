@@ -1,0 +1,6 @@
+PyMuPDF
+numpy
+openai
+faiss-cpu
+sentence-transformers
+fastapi

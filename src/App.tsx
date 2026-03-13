@@ -61,13 +61,55 @@ export default function ChatUI() {
     { id: 2, title: "manual.txt", score: 0.86, passage: "The device enters pairing mode when the power button is held for three seconds. A blinking blue LED indicates that the system is broadcasting its pairing signal.", fullText: "The device enters pairing mode when the power button is held for three seconds. A blinking blue LED indicates that the system is broadcasting its pairing signal. If no device connects within 60 seconds the device exits pairing mode automatically." }
   ]);
 
-  const sendMessage = () => {
+  // API 接口
+  const sendMessage = async () => {
     if (!input.trim()) return;
+
     if (!hasStartedChat) setHasStartedChat(true);
 
-    const newMessages: Message[] = [...messages, { role: "user", content: input }, { role: "assistant", content: "(response placeholder)" }];
-    setMessages(newMessages);
+    const userPrompt = input;
     setInput("");
+
+    // Immediately add the user message
+    setMessages((prev) => [...prev, { role: "user", content: userPrompt }]);
+
+    // Add a temporary assistant placeholder
+    const tempId = Date.now();
+    setMessages((prev) => [...prev, { role: "assistant", content: "Typing...", id: tempId } as any]);
+
+    try {
+      const formData = new FormData();
+      formData.append("experience_level", "Explain it to me like I'm a " + explainLevel + ":\n");
+      formData.append("prompt", userPrompt);
+
+      uploadedFiles.forEach((file, idx) => {
+        formData.append("file_" + idx, file);
+      });
+
+      const response = await fetch("/api/llm", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("LLM API error");
+
+      const data = await response.json();
+      // Expecting: { text: "LLM response here" }
+
+      // Replace the temporary message with actual LLM response
+      setMessages((prev) =>
+        prev.map((m) => (m.role === "assistant" && (m as any).id === tempId ? { role: "assistant", content: data.text } : m))
+      );
+    } catch (err) {
+      console.error(err);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.role === "assistant" && (m as any).id === tempId
+            ? { role: "assistant", content: "Error: could not fetch LLM response." }
+            : m
+        )
+      );
+    }
   };
 
   const handleUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -86,24 +128,37 @@ export default function ChatUI() {
           <button onClick={() => setDarkMode(!darkMode)} className={`px-3 py-1 text-sm rounded border-2 ${theme.border} shadow-md font-medium backdrop-blur bg-gradient-to-br from-blue-500/20 to-purple-500/20 hover:scale-105 transition-transform`}>{darkMode ? "Light" : "Dark"}</button>
         </div>
 
-        <div className="text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-gray-400 via-gray-200 to-gray-600 drop-shadow-lg relative">
-          <span className="absolute inset-0 bg-[url('textures/metal-grunge.png')] bg-repeat bg-clip-text mix-blend-overlay"></span>
+        <div
+          className={`text-5xl font-extrabold tracking-tight drop-shadow-lg ${
+            darkMode
+              ? "bg-[url('textures/metal-grunge.png')] bg-cover bg-center bg-clip-text text-transparent filter brightness-150"
+              : "bg-gradient-to-r from-blue-500 via-cyan-400 to-purple-500 bg-clip-text text-transparent invert"
+          }`}
+        >
           RepairPilot
         </div>
 
-        <label className="px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white cursor-pointer font-semibold shadow-lg hover:scale-105 transition-transform duration-300">
-          <span className="flex items-center gap-2">
-            <span>Upload</span>
-            <span className="relative h-6 overflow-hidden">
-              <span className="absolute left-0 animate-scroll transition-transform duration-500" style={{ transform: `translateY(-${uploadIndex * 1.5}rem)` }}>
-                {uploadWords.map((w, i) => (
-                  <div key={i} className="h-6 leading-6">{w}</div>
-                ))}
+        <label className="px-[20px] pr-[6px] py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white cursor-pointer font-semibold shadow-lg relative overflow-hidden flex justify-center items-center w-max">
+            <span className="flex items-center">
+              <span>Upload</span>
+              <span className="relative h-6 w-28 flex items-center justify-center overflow-hidden ml-[-5px]">
+                <span className="absolute top-0 animate-uploadScroll">
+                  {uploadWords.map((w, i) => (
+                    <div key={i} className="h-6 flex items-center justify-center">{w}</div>
+                  ))}
+                  {/* Repeat first word for smooth looping */}
+                  <div className="h-6 flex items-center justify-center">{uploadWords[0]}</div>
+                </span>
               </span>
             </span>
-          </span>
-          <input type="file" multiple className="hidden" accept=".pdf,.txt,.md,.doc,.docx" onChange={handleUpload} />
-        </label>
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              accept=".pdf,.txt,.md,.doc,.docx"
+              onChange={handleUpload}
+            />
+          </label>
 
         {uploadedFiles.length > 0 && <div className="text-sm opacity-70">{uploadedFiles.length} file(s) uploaded</div>}
 

@@ -15,3 +15,22 @@ code {
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes uploadScroll {
+  0%, 18.75%    { transform: translateY(0); }       /* Documents pause */
+  20%, 23.75%   { transform: translateY(-1.5rem); }/* scroll to Manual */
+  
+  25%, 43.75%   { transform: translateY(-1.5rem); }/* Manual pause */
+  45%, 48.75%   { transform: translateY(-3rem); }  /* scroll to Blueprint */
+  
+  50%, 68.75%   { transform: translateY(-3rem); }  /* Blueprint pause */
+  70%, 73.75%   { transform: translateY(-4.5rem); }/* scroll to Guide */
+  
+  75%, 93.75%   { transform: translateY(-4.5rem); }/* Guide pause */
+  95%, 100%     { transform: translateY(-6rem); }  /* scroll back to start */
+}
+
+.animate-uploadScroll {
+  animation: uploadScroll 16s infinite;
+  animation-timing-function: linear;
+}
