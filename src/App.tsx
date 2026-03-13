@@ -82,8 +82,8 @@ export default function ChatUI() {
       formData.append("experience_level", "Explain it to me like I'm a " + explainLevel + ":\n");
       formData.append("prompt", userPrompt);
 
-      uploadedFiles.forEach((file, idx) => {
-        formData.append("file_" + idx, file);
+      uploadedFiles.forEach((file) => {
+        formData.append("files", file); // Must match the parameter name in FastAPI
       });
 
       const response = await fetch("/api/llm", {

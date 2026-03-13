@@ -203,11 +203,10 @@ def run_example(index, chunks, query, experience_level):
     print(answer)
     print()
 
+if __name__ == "__main__":
+    index, chunks = build_index(PDF_PATH)
 
-index, chunks = build_index(PDF_PATH)
-
-
-run_example(index, chunks,
-    query="how do I check and add engine oil",
-    experience_level="Beginner"
-)
+    run_example(index, chunks,
+        query="how do I check and add engine oil",
+        experience_level="Beginner"
+    )

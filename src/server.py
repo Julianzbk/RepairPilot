@@ -1,11 +1,19 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import uvicorn
+
 from typing import List
 import shutil
+import tempfile
 import os
+from pathlib import Path
 
 # Import your existing functions: build_index, expand_query, search_manual, generate_answer, chunks, index
-from semantic_search import build_index, expand_query, search_manual, generate_answer
+from semantic_search import build_index, expand_query, search_manual, generate_answer   
+
+# Initialize your FAISS index once
+PDF_PATH = "examples/2015-q40-owner-manual.pdf"
 
 app = FastAPI()
 
@@ -17,10 +25,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Initialize your FAISS index once
-PDF_PATH = "examples/2015-q40-owner-manual.pdf"
-index, chunks = build_index(PDF_PATH)
 
 @app.post("/api/llm")
 async def query_llm(
@@ -34,25 +38,30 @@ async def query_llm(
     - experience_level: Beginner / Intermediate / Expert
     - files: optional additional PDFs / text files
     """
-
-    # Save uploaded files to temporary directory and build index if needed
+    # Temporarily save uploaded files
+    uploaded_docs = []
     for f in files:
-        temp_path = f"/tmp/{f.filename}"
-        with open(temp_path, "wb") as out_file:
-            shutil.copyfileobj(f.file, out_file)
-        # Optionally, you could build index on these files and merge with main index
-        # new_index, new_chunks = build_index(temp_path)
-        # merge_indices(index, new_index)
-        # chunks.extend(new_chunks)
-        # For simplicity, we'll ignore additional files for now
+        suffix = Path(f.filename).suffix
+        tmp_file = Path(tempfile.gettempdir()) / f.filename
+        with tmp_file.open("wb") as buffer:
+            shutil.copyfileobj(f.file, buffer)
+        uploaded_docs.append(tmp_file)
 
-    # Expand the query
-    expanded = expand_query(prompt)
+    # Combine main PDF and uploaded files for semantic search
+    all_docs = uploaded_docs[0] # TODO: Parse every element instead of first
 
-    # Search FAISS index
-    results, top_score = search_manual(expanded, index, chunks)
+    # For simplicity, just use main index for now
+    # Expand the user query
+    expanded_query = expand_query(prompt)
 
-    # Generate LLM answer
+    index, chunks = build_index(all_docs)
+    # Retrieve top results
+    results, top_score = search_manual(expanded_query, index, chunks)
+
+    # Generate answer from LLM
     answer = generate_answer(prompt, results, experience_level)
 
-    return {"text": answer}
+    return JSONResponse({"text": answer})
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
