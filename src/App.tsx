@@ -86,7 +86,7 @@ export default function ChatUI() {
         formData.append("files", file); // Must match the parameter name in FastAPI
       });
 
-      const response = await fetch("/api/llm", {
+      const response = await fetch("http://localhost:8000/api/llm", {
         method: "POST",
         body: formData,
       });
@@ -174,7 +174,7 @@ export default function ChatUI() {
     <div className={`h-screen w-full flex flex-col ${theme.bg} ${theme.text}`}>
       <div className={`border-b p-4 flex items-center justify-between ${theme.border}`}>
         <div className="flex flex-col">
-          <div className="text-xl font-semibold">RAG Chat</div>
+          <div className="text-xl font-semibold">RepairPilot Chat</div>
           <div className="text-xs opacity-60">Product Name • Query Spec Placeholder</div>
         </div>
 
